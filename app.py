@@ -9,6 +9,7 @@ HTML = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="uDLAyBFcSPxhK968gYamXFGDCb24yBE5M7e5ABlCFyQ" />
     <title>Umang Raj AI - Smart Search Engine</title>
     <meta name="description" content="Umang Raj AI is an intelligent search and AI assistant created by Umang Raj.">
     <meta name="keywords" content="Umang Raj AI, Umang AI, Umang Search Engine, Umang Raj">
@@ -67,4 +68,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-  
+    
