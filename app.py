@@ -3,14 +3,12 @@ import requests
 
 app = Flask(__name__)
 
-# आपकी दोनों चाबियाँ (Keys)
-GOOGLE_API_KEY = "यहाँ_अपनी_GOOGLE_API_KEY_डालें"
+# आपकी दोनों चाबियाँ (Keys) सेट हैं
+GOOGLE_API_KEY = "AIzaSyAI3hc54P2uVDKeVzZrbyWXSiTlQ_0S8Hs"
 SEARCH_ENGINE_ID = "57e27a61842084170"
 
 def get_live_search_data(query):
     """Google से ताज़ा लाइव डेटा लाने का फ़ंक्शन"""
-    if not GOOGLE_API_KEY or "यहाँ_अपनी" in GOOGLE_API_KEY:
-        return ""
     try:
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
@@ -73,10 +71,7 @@ def home():
     query = request.args.get('q', '').strip()
     answer = ""
     if query:
-        # 1. पहले ताज़ा गूगल लाइव जानकारी प्राप्त करना
         live_data = get_live_search_data(query)
-        
-        # 2. AI को निर्देश देना कि वह ताज़ा इंटरनेट जानकारी पढ़कर उत्तर दे
         context = f"\nताज़ा इंटरनेट सर्च डेटा:\n{live_data}" if live_data else ""
         prompt = (
             f"आप 'Umang Raj AI' नाम के एक आधुनिक और सटीक AI सर्च इंजन हैं, जिसे Umang Raj ने बनाया है। "
@@ -100,5 +95,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-    
-    
+            
