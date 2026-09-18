@@ -12,7 +12,7 @@ def get_live_search_data_and_images(query):
     text_snippets = []
     image_urls = []
     
-    # 1. टेक्स्ट डेटा लाना
+    # 1. Google Live Data
     try:
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
@@ -26,7 +26,7 @@ def get_live_search_data_and_images(query):
     except Exception:
         pass
 
-    # 2. तस्वीरें लाना
+    # 2. Google Images
     try:
         img_url = "https://www.googleapis.com/customsearch/v1"
         img_params = {
@@ -129,24 +129,38 @@ def home():
         if user_query:
             session['messages'].append({'role': 'user', 'text': user_query})
             live_data, images = get_live_search_data_and_images(user_query)
-            context = f"\nWeb Search Data:\n{live_data}" if live_data else ""
+            context = f"\nताज़ा सर्च डेटा:\n{live_data}" if live_data else ""
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
             
             prompt = (
-                f"You are 'Umang Raj AI' created by Umang Raj. "
-                f"Previous chat:\n{history_text}\n"
+                f"आप 'Umang Raj AI' हैं, जिसे Umang Raj ने बनाया है। "
+                f"पिछली बातचीत:\n{history_text}\n"
                 f"{context}\n\n"
-                f"User request: {user_query}\n"
-                f"Strict instruction: If user asks for images/photos or information, provide a short polite answer in Hindi. "
-                f"Never say 'I cannot show pictures' because pictures are automatically loaded by the system below your message."
+                f"नया सवाल: {user_query}\n"
+                f"कृपया बातचीत के क्रम और ताज़ा डेटा के आधार पर हिंदी में सही और सटीक उत्तर दें।"
             )
 
+            ai_reply = ""
+            # मजबूत POST कॉल
             try:
-                url = f"https://text.pollinations.ai/{requests.utils.quote(prompt)}"
-                res = requests.get(url, timeout=25)
-                ai_reply = res.text.strip() if res.status_code == 200 else "उत्तर प्राप्त नहीं हो सका।"
+                post_res = requests.post(
+                    "https://text.pollinations.ai/",
+                    json={"messages": [{"role": "user", "content": prompt}], "model": "openai"},
+                    timeout=20
+                )
+                if post_res.status_code == 200 and post_res.text.strip():
+                    ai_reply = post_res.text.strip()
             except Exception:
-                ai_reply = "नेटवर्क में समस्या के कारण उत्तर नहीं मिल सका।"
+                pass
+
+            # बैकअप फॉलबैक कॉल
+            if not ai_reply:
+                try:
+                    get_res = requests.get(f"https://text.pollinations.ai/{requests.utils.quote(user_query)}", timeout=15)
+                    if get_res.status_code == 200:
+                        ai_reply = get_res.text.strip()
+                except Exception:
+                    ai_reply = "माफ़ कीजिए, उत्तर प्राप्त नहीं हो सका। कृपया पुनः प्रयास करें।"
 
             session['messages'].append({'role': 'ai', 'text': ai_reply, 'images': images})
             session.modified = True
@@ -160,4 +174,4 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
- 
+    
