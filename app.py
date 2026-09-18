@@ -129,15 +129,15 @@ def home():
         if user_query:
             session['messages'].append({'role': 'user', 'text': user_query})
             live_data, images = get_live_search_data_and_images(user_query)
-            context = f"\nताज़ा सर्च डेटा:\n{live_data}" if live_data else ""
+            context = f"\nताज़ा इंटरनेट डेटा:\n{live_data}" if live_data else ""
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
             
             prompt = (
                 f"आप 'Umang Raj AI' हैं, जिसे Umang Raj ने बनाया है। "
                 f"पिछली बातचीत:\n{history_text}\n"
                 f"{context}\n\n"
-                f"नया सवाल: {user_query}\n"
-                f"कृपया बातचीत के क्रम और ताज़ा डेटा के आधार पर हिंदी में सही और सटीक उत्तर दें।"
+                f"यूज़र का सवाल: {user_query}\n"
+                f"कृपया बातचीत और ताज़ा डेटा के आधार पर हिंदी में सही उत्तर दें। कभी यह मत कहना कि तस्वीर नहीं दिखा सकते, क्योंकि तस्वीरें नीचे अपने-आप लोड होती हैं।"
             )
 
             ai_reply = ""
@@ -174,4 +174,3 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-    
