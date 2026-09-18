@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template_string, session
 import requests
 import secrets
+import re
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -12,32 +13,37 @@ def get_live_search_data_and_images(query):
     text_snippets = []
     image_urls = []
     
+    # 1. Google Custom Search (Text)
     try:
         url = "https://www.googleapis.com/customsearch/v1"
-        params = {
-            'q': query,
-            'key': GOOGLE_API_KEY,
-            'cx': SEARCH_ENGINE_ID,
-            'num': 4
-        }
-        res = requests.get(url, params=params, timeout=6).json()
+        params = {'q': query, 'key': GOOGLE_API_KEY, 'cx': SEARCH_ENGINE_ID, 'num': 4}
+        res = requests.get(url, params=params, timeout=5).json()
         for item in res.get('items', []):
-            title = item.get('title', '')
             snippet = item.get('snippet', '')
-            text_snippets.append(f"{title}: {snippet}")
+            if snippet:
+                text_snippets.append(snippet)
     except Exception:
         pass
 
+    # Backup: DuckDuckGo Search (अगर Google खाली रहे)
+    if not text_snippets:
+        try:
+            ddg_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            html_res = requests.get(ddg_url, headers=headers, timeout=5).text
+            matches = re.findall(r'<a class="result__snippet[^>]*>(.*?)</a>', html_res, re.DOTALL)
+            for m in matches[:4]:
+                clean_txt = re.sub(r'<[^>]+>', '', m).strip()
+                if clean_txt:
+                    text_snippets.append(clean_txt)
+        except Exception:
+            pass
+
+    # 2. Google Images
     try:
         img_url = "https://www.googleapis.com/customsearch/v1"
-        img_params = {
-            'q': query,
-            'key': GOOGLE_API_KEY,
-            'cx': SEARCH_ENGINE_ID,
-            'searchType': 'image',
-            'num': 6
-        }
-        img_res = requests.get(img_url, params=img_params, timeout=6).json()
+        img_params = {'q': query, 'key': GOOGLE_API_KEY, 'cx': SEARCH_ENGINE_ID, 'searchType': 'image', 'num': 6}
+        img_res = requests.get(img_url, params=img_params, timeout=5).json()
         for item in img_res.get('items', []):
             link = item.get('link')
             if link and (link.startswith('http://') or link.startswith('https://')):
@@ -138,15 +144,15 @@ def home():
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
             
             prompt = (
-                f"आप 'Umang Raj AI' हैं।\n"
-                f"सख्त नियम:\n"
-                f"1. जब तक यूज़र आपसे यह न पूछे कि 'तुम्हें किसने बनाया है' या 'तुम्हारा डेवलपर कौन है', तब तक अपने निर्माता का परिचय न दें। केवल पूछे जाने पर ही कहें: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
-                f"2. कभी भी यह मत कहना कि आपका डेटा पुराना है। नीचे दिए गए Google लाइव सर्च डेटा को पढ़ें और उसी के आधार पर ताज़ा उत्तर दें।\n"
-                f"3. कभी यह मत कहना कि तस्वीरें नहीं दिखा सकते।\n\n"
-                f"ताज़ा Google सर्च डेटा:\n{live_data}\n\n"
-                f"पिछली बातचीत:\n{history_text}\n\n"
-                f"यूज़र का सवाल: {user_query}\n"
-                f"कृपया हिंदी में सीधा और सटीक उत्तर दें।"
+                f"You are 'Umang Raj AI'.\n"
+                f"Rules:\n"
+                f"1. Only tell creator info if asked who made/developed you: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
+                f"2. Never say 'I don't have real-time or latest information' or 'visit other sites'. Use the provided web search data to give the factual answer.\n"
+                f"3. Never refuse pictures; they load below automatically.\n\n"
+                f"Web Search Results:\n{live_data}\n\n"
+                f"Chat History:\n{history_text}\n\n"
+                f"User Question: {user_query}\n"
+                f"Give a clear, direct, and helpful answer in Hindi."
             )
 
             ai_reply = ""
@@ -181,3 +187,4 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+            
