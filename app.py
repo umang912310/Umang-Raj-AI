@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template_string, session
 import requests
 import secrets
+import json
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -8,42 +9,40 @@ app.secret_key = secrets.token_hex(16)
 def get_live_data_and_images(query):
     text_info = []
     image_urls = []
-    headers = {'User-Agent': 'UmangRajAI/1.0 (contact: umangraj@app.local)'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
-    # 1. Wikipedia Live Search - हमेशा लाइव और सटीक डेटा (कभी ब्लॉक नहीं होता)
+    # 1. DuckDuckGo Instant API (करंट न्यूज़ और पदों के लिए)
     try:
-        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(query)}&utf8=&format=json"
-        sr = requests.get(search_url, headers=headers, timeout=5).json()
-        items = sr.get('query', {}).get('search', [])
-        
-        for item in items[:3]:
-            # HTML टैग्स हटाकर साफ़ टेक्स्ट लेना
-            clean_snippet = item.get('snippet', '').replace('<span class="searchmatch">', '').replace('</span>', '')
-            text_info.append(f"{item.get('title')}: {clean_snippet}")
-
-        # पहली मुख्य रिज़ल्ट की तस्वीर निकालना
-        if items:
-            top_title = items[0].get('title')
-            summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(top_title)}"
-            sum_res = requests.get(summary_url, headers=headers, timeout=5).json()
-            if 'thumbnail' in sum_res and 'source' in sum_res['thumbnail']:
-                image_urls.append(sum_res['thumbnail']['source'])
+        ddg_url = f"https://api.duckduckgo.com/?q={requests.utils.quote(query)}&format=json&no_html=1&skip_disambig=1"
+        res = requests.get(ddg_url, headers=headers, timeout=5).json()
+        if res.get('AbstractText'):
+            text_info.append(res.get('AbstractText'))
+        for topic in res.get('RelatedTopics', [])[:2]:
+            if isinstance(topic, dict) and topic.get('Text'):
+                text_info.append(topic.get('Text'))
+        if res.get('Image'):
+            img = res.get('Image')
+            if img.startswith('/'):
+                img = "https://duckduckgo.com" + img
+            image_urls.append(img)
     except Exception:
         pass
 
-    # 2. Google Custom Search (बैकअप टेक्स्ट और तस्वीरें)
+    # 2. Wikipedia Live Search (अगर DDG खाली रहे)
     try:
-        g_url = "https://www.googleapis.com/customsearch/v1"
-        params = {
-            'q': query,
-            'key': "AIzaSyAI3hc54P2uVDKeVzZrbyWXSiTlQ_0S8Hs",
-            'cx': "57e27a61842084170",
-            'num': 3
-        }
-        gres = requests.get(g_url, params=params, timeout=5).json()
-        for item in gres.get('items', []):
-            if item.get('snippet'):
-                text_info.append(item.get('snippet'))
+        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(query)}&utf8=&format=json"
+        sr = requests.get(wiki_url, headers=headers, timeout=5).json()
+        items = sr.get('query', {}).get('search', [])
+        for item in items[:2]:
+            clean_snippet = item.get('snippet', '').replace('<span class="searchmatch">', '').replace('</span>', '')
+            text_info.append(f"{item.get('title')}: {clean_snippet}")
+        
+        if items and not image_urls:
+            top_title = items[0].get('title')
+            sum_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(top_title)}"
+            sum_res = requests.get(sum_url, headers=headers, timeout=5).json()
+            if 'thumbnail' in sum_res:
+                image_urls.append(sum_res['thumbnail']['source'])
     except Exception:
         pass
 
@@ -102,7 +101,7 @@ HTML = '''
                             {% for img in m.images %}
                                 <div class="img-card">
                                     <a href="{{ img }}" target="_blank">
-                                        <img src="{{ img }}" loading="lazy" onerror="this.parentElement.style.display='none'">
+                                        <img src="{{ img }}" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
                                     </a>
                                 </div>
                             {% endfor %}
@@ -138,21 +137,20 @@ def home():
             live_data, images = get_live_data_and_images(user_query)
             
             prompt = (
-                f"You are 'Umang Raj AI'.\n"
-                f"Rules:\n"
-                f"1. Identity: ONLY if the user explicitly asks who created/developed you, say: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
-                f"2. Factual Accuracy: Use the provided live internet data. Do NOT guess or hallucinate names. State facts directly in Hindi.\n"
-                f"3. Never refuse pictures or say you lack real-time info.\n\n"
-                f"Live Internet Search Data:\n{live_data}\n\n"
-                f"User Question: {user_query}\n"
-                f"Answer in clear Hindi:"
+                f"You are Umang Raj AI.\n"
+                f"STRICT INSTRUCTIONS:\n"
+                f"1. Only introduce creator if user asks 'who created/made/developed you': 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
+                f"2. You MUST use this real-time web context to answer factual/current questions. Do NOT use outdated training data:\n"
+                f"--- LIVE WEB DATA ---\n{live_data}\n---------------------\n"
+                f"Question: {user_query}\n"
+                f"Give direct, factual, correct Hindi response:"
             )
 
             ai_reply = ""
             try:
                 post_res = requests.post(
                     "https://text.pollinations.ai/",
-                    json={"messages": [{"role": "user", "content": prompt}], "model": "openai"},
+                    json={"messages": [{"role": "user", "content": prompt}], "model": "mistral"},
                     timeout=20
                 )
                 if post_res.status_code == 200 and post_res.text.strip():
@@ -160,8 +158,10 @@ def home():
             except Exception:
                 pass
 
-            if not ai_reply:
-                ai_reply = "माफ़ कीजिए, सर्वर से उत्तर प्राप्त नहीं हो सका। कृपया पुनः प्रयास करें।"
+            if not ai_reply and live_data:
+                ai_reply = f"ताज़ा जानकारी के अनुसार:\n{live_data}"
+            elif not ai_reply:
+                ai_reply = "माफ़ कीजिए, उत्तर प्राप्त नहीं हो सका।"
 
             session['messages'].append({'role': 'ai', 'text': ai_reply, 'images': images})
             session.modified = True
