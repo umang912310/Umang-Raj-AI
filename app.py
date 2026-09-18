@@ -12,7 +12,6 @@ def get_live_search_data_and_images(query):
     text_snippets = []
     image_urls = []
     
-    # 1. Google Live Data
     try:
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
@@ -26,7 +25,6 @@ def get_live_search_data_and_images(query):
     except Exception:
         pass
 
-    # 2. Google Images
     try:
         img_url = "https://www.googleapis.com/customsearch/v1"
         img_params = {
@@ -83,8 +81,8 @@ HTML = '''
     <div class="chat-box" id="chatBox">
         {% if not messages %}
             <div class="welcome-box">
-                <div class="welcome-title">नमस्ते गौरव! 👋</div>
-                <div class="welcome-sub">मैं <strong>Umang Raj AI</strong> हूँ। मुझसे पढ़ाई, सामान्य ज्ञान या कोई भी सवाल पूछें...</div>
+                <div class="welcome-title">नमस्ते, मैं गौरव हूँ! 👋</div>
+                <div class="welcome-sub">मैं <strong>Umang Raj AI</strong> का साथी हूँ। मुझसे कोई भी सवाल पूछें या बातचीत शुरू करें...</div>
             </div>
         {% endif %}
         {% for m in messages %}
@@ -138,8 +136,8 @@ def home():
             
             prompt = (
                 f"आप 'Umang Raj AI' हैं। "
-                f"सख्त निर्देश (Creator Details): यदि कोई आपसे पूछे कि आपको किसने बनाया है, आपका निर्माता कौन है, आपका डेवलपर कौन है या आप कौन हैं, "
-                f"तो आपको हमेशा स्पष्ट शब्दों में यही बताना है: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
+                f"सख्त निर्देश: यदि कोई आपसे पूछे कि आपको किसने बनाया है, आपका निर्माता या डेवलपर कौन है, "
+                f"तो आपको स्पष्ट रूप से यही बताना है: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
                 f"पिछली बातचीत:\n{history_text}\n"
                 f"{context}\n\n"
                 f"यूज़र का सवाल: {user_query}\n"
@@ -178,4 +176,4 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-        
+    
