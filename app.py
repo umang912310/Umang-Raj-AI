@@ -1,57 +1,53 @@
 from flask import Flask, request, render_template_string, session
 import requests
 import secrets
-import re
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
-GOOGLE_API_KEY = "AIzaSyAI3hc54P2uVDKeVzZrbyWXSiTlQ_0S8Hs"
-SEARCH_ENGINE_ID = "57e27a61842084170"
-
-def get_live_search_data_and_images(query):
-    text_snippets = []
+def get_live_data_and_images(query):
+    text_info = []
     image_urls = []
-    
-    # 1. Google Custom Search (Text)
+    headers = {'User-Agent': 'UmangRajAI/1.0 (contact: umangraj@app.local)'}
+
+    # 1. Wikipedia Live Search - हमेशा लाइव और सटीक डेटा (कभी ब्लॉक नहीं होता)
     try:
-        url = "https://www.googleapis.com/customsearch/v1"
-        params = {'q': query, 'key': GOOGLE_API_KEY, 'cx': SEARCH_ENGINE_ID, 'num': 4}
-        res = requests.get(url, params=params, timeout=5).json()
-        for item in res.get('items', []):
-            snippet = item.get('snippet', '')
-            if snippet:
-                text_snippets.append(snippet)
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(query)}&utf8=&format=json"
+        sr = requests.get(search_url, headers=headers, timeout=5).json()
+        items = sr.get('query', {}).get('search', [])
+        
+        for item in items[:3]:
+            # HTML टैग्स हटाकर साफ़ टेक्स्ट लेना
+            clean_snippet = item.get('snippet', '').replace('<span class="searchmatch">', '').replace('</span>', '')
+            text_info.append(f"{item.get('title')}: {clean_snippet}")
+
+        # पहली मुख्य रिज़ल्ट की तस्वीर निकालना
+        if items:
+            top_title = items[0].get('title')
+            summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(top_title)}"
+            sum_res = requests.get(summary_url, headers=headers, timeout=5).json()
+            if 'thumbnail' in sum_res and 'source' in sum_res['thumbnail']:
+                image_urls.append(sum_res['thumbnail']['source'])
     except Exception:
         pass
 
-    # Backup: DuckDuckGo Search (अगर Google खाली रहे)
-    if not text_snippets:
-        try:
-            ddg_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            html_res = requests.get(ddg_url, headers=headers, timeout=5).text
-            matches = re.findall(r'<a class="result__snippet[^>]*>(.*?)</a>', html_res, re.DOTALL)
-            for m in matches[:4]:
-                clean_txt = re.sub(r'<[^>]+>', '', m).strip()
-                if clean_txt:
-                    text_snippets.append(clean_txt)
-        except Exception:
-            pass
-
-    # 2. Google Images
+    # 2. Google Custom Search (बैकअप टेक्स्ट और तस्वीरें)
     try:
-        img_url = "https://www.googleapis.com/customsearch/v1"
-        img_params = {'q': query, 'key': GOOGLE_API_KEY, 'cx': SEARCH_ENGINE_ID, 'searchType': 'image', 'num': 6}
-        img_res = requests.get(img_url, params=img_params, timeout=5).json()
-        for item in img_res.get('items', []):
-            link = item.get('link')
-            if link and (link.startswith('http://') or link.startswith('https://')):
-                image_urls.append(link)
+        g_url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            'q': query,
+            'key': "AIzaSyAI3hc54P2uVDKeVzZrbyWXSiTlQ_0S8Hs",
+            'cx': "57e27a61842084170",
+            'num': 3
+        }
+        gres = requests.get(g_url, params=params, timeout=5).json()
+        for item in gres.get('items', []):
+            if item.get('snippet'):
+                text_info.append(item.get('snippet'))
     except Exception:
         pass
 
-    return "\n".join(text_snippets), image_urls
+    return "\n".join(text_info), image_urls
 
 HTML = '''
 <!DOCTYPE html>
@@ -72,8 +68,8 @@ HTML = '''
         .user-msg { background: #1a73e8; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
         .ai-msg { background: #fff; color: #202124; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); width: 85%; }
         .gallery-title { font-size: 13px; font-weight: bold; color: #1a73e8; margin-top: 12px; margin-bottom: 6px; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 5px; }
-        .img-card { height: 100px; border-radius: 8px; overflow: hidden; background: #eee; border: 1px solid #e0e0e0; }
+        .gallery { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+        .img-card { height: 130px; width: 130px; border-radius: 10px; overflow: hidden; background: #eee; border: 1px solid #ddd; }
         .img-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .footer { background: #fff; padding: 12px 16px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
         .footer input { flex: 1; padding: 12px 18px; border: 1px solid #ccc; border-radius: 25px; outline: none; font-size: 15px; }
@@ -106,7 +102,7 @@ HTML = '''
                             {% for img in m.images %}
                                 <div class="img-card">
                                     <a href="{{ img }}" target="_blank">
-                                        <img src="{{ img }}" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+                                        <img src="{{ img }}" loading="lazy" onerror="this.parentElement.style.display='none'">
                                     </a>
                                 </div>
                             {% endfor %}
@@ -139,20 +135,17 @@ def home():
         user_query = request.form.get('q', '').strip()
         if user_query:
             session['messages'].append({'role': 'user', 'text': user_query})
-            live_data, images = get_live_search_data_and_images(user_query)
-            
-            history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
+            live_data, images = get_live_data_and_images(user_query)
             
             prompt = (
                 f"You are 'Umang Raj AI'.\n"
                 f"Rules:\n"
-                f"1. Only tell creator info if asked who made/developed you: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
-                f"2. Never say 'I don't have real-time or latest information' or 'visit other sites'. Use the provided web search data to give the factual answer.\n"
-                f"3. Never refuse pictures; they load below automatically.\n\n"
-                f"Web Search Results:\n{live_data}\n\n"
-                f"Chat History:\n{history_text}\n\n"
+                f"1. Identity: ONLY if the user explicitly asks who created/developed you, say: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
+                f"2. Factual Accuracy: Use the provided live internet data. Do NOT guess or hallucinate names. State facts directly in Hindi.\n"
+                f"3. Never refuse pictures or say you lack real-time info.\n\n"
+                f"Live Internet Search Data:\n{live_data}\n\n"
                 f"User Question: {user_query}\n"
-                f"Give a clear, direct, and helpful answer in Hindi."
+                f"Answer in clear Hindi:"
             )
 
             ai_reply = ""
@@ -168,12 +161,7 @@ def home():
                 pass
 
             if not ai_reply:
-                try:
-                    get_res = requests.get(f"https://text.pollinations.ai/{requests.utils.quote(prompt)}", timeout=15)
-                    if get_res.status_code == 200:
-                        ai_reply = get_res.text.strip()
-                except Exception:
-                    ai_reply = "माफ़ कीजिए, उत्तर प्राप्त नहीं हो सका। कृपया पुनः प्रयास करें।"
+                ai_reply = "माफ़ कीजिए, सर्वर से उत्तर प्राप्त नहीं हो सका। कृपया पुनः प्रयास करें।"
 
             session['messages'].append({'role': 'ai', 'text': ai_reply, 'images': images})
             session.modified = True
