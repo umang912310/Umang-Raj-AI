@@ -58,6 +58,9 @@ HTML = '''
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
         .header { background: #fff; padding: 14px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 18px; color: #1a73e8; }
         .chat-box { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+        .welcome-box { margin: auto; text-align: center; max-width: 400px; padding: 20px; }
+        .welcome-title { font-size: 26px; font-weight: bold; color: #1a73e8; margin-bottom: 10px; }
+        .welcome-sub { font-size: 16px; color: #5f6368; line-height: 1.5; }
         .msg { max-width: 85%; padding: 12px 16px; border-radius: 16px; line-height: 1.5; font-size: 15px; word-wrap: break-word; white-space: pre-wrap; }
         .user-msg { background: #1a73e8; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
         .ai-msg { background: #fff; color: #202124; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); width: 85%; }
@@ -79,8 +82,9 @@ HTML = '''
 
     <div class="chat-box" id="chatBox">
         {% if not messages %}
-            <div style="text-align: center; color: #888; margin-top: 40px; font-size: 14px;">
-                सर्च करने या बातचीत शुरू करने के लिए नीचे लिखें...
+            <div class="welcome-box">
+                <div class="welcome-title">नमस्ते गौरव! 👋</div>
+                <div class="welcome-sub">मैं <strong>Umang Raj AI</strong> हूँ। मुझसे पढ़ाई, सामान्य ज्ञान या कोई भी सवाल पूछें...</div>
             </div>
         {% endif %}
         {% for m in messages %}
@@ -107,7 +111,7 @@ HTML = '''
     </div>
 
     <form method="POST" action="/" class="footer">
-        <input type="text" name="q" placeholder="यहाँ लिखें..." autocomplete="off" autofocus required>
+        <input type="text" name="q" placeholder="यहाँ मैसेज लिखें..." autocomplete="off" autofocus required>
         <button type="submit">भेजें</button>
     </form>
 
@@ -133,7 +137,9 @@ def home():
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
             
             prompt = (
-                f"आप 'Umang Raj AI' हैं, जिसे Umang Raj ने बनाया है। "
+                f"आप 'Umang Raj AI' हैं। "
+                f"सख्त निर्देश (Creator Details): यदि कोई आपसे पूछे कि आपको किसने बनाया है, आपका निर्माता कौन है, आपका डेवलपर कौन है या आप कौन हैं, "
+                f"तो आपको हमेशा स्पष्ट शब्दों में यही बताना है: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
                 f"पिछली बातचीत:\n{history_text}\n"
                 f"{context}\n\n"
                 f"यूज़र का सवाल: {user_query}\n"
@@ -141,7 +147,6 @@ def home():
             )
 
             ai_reply = ""
-            # मजबूत POST कॉल
             try:
                 post_res = requests.post(
                     "https://text.pollinations.ai/",
@@ -153,7 +158,6 @@ def home():
             except Exception:
                 pass
 
-            # बैकअप फॉलबैक कॉल
             if not ai_reply:
                 try:
                     get_res = requests.get(f"https://text.pollinations.ai/{requests.utils.quote(user_query)}", timeout=15)
@@ -174,3 +178,4 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+        
