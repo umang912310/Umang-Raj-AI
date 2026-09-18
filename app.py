@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, session
+ from flask import Flask, request, render_template_string, session
 import requests
 import secrets
 
@@ -11,6 +11,8 @@ SEARCH_ENGINE_ID = "57e27a61842084170"
 def get_live_search_data_and_images(query):
     text_snippets = []
     image_urls = []
+    
+    # 1. टेक्स्ट डेटा लाना
     try:
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
@@ -19,11 +21,12 @@ def get_live_search_data_and_images(query):
             'cx': SEARCH_ENGINE_ID,
             'num': 3
         }
-        res = requests.get(url, params=params, timeout=5).json()
+        res = requests.get(url, params=params, timeout=6).json()
         text_snippets = [item.get('snippet', '') for item in res.get('items', [])]
     except Exception:
         pass
 
+    # 2. तस्वीरें लाना
     try:
         img_url = "https://www.googleapis.com/customsearch/v1"
         img_params = {
@@ -31,10 +34,13 @@ def get_live_search_data_and_images(query):
             'key': GOOGLE_API_KEY,
             'cx': SEARCH_ENGINE_ID,
             'searchType': 'image',
-            'num': 3
+            'num': 6
         }
-        img_res = requests.get(img_url, params=img_params, timeout=5).json()
-        image_urls = [item.get('link', '') for item in img_res.get('items', []) if item.get('link')]
+        img_res = requests.get(img_url, params=img_params, timeout=6).json()
+        for item in img_res.get('items', []):
+            link = item.get('link')
+            if link and (link.startswith('http://') or link.startswith('https://')):
+                image_urls.append(link)
     except Exception:
         pass
 
@@ -51,13 +57,15 @@ HTML = '''
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
         .header { background: #fff; padding: 14px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 18px; color: #1a73e8; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 16px; line-height: 1.5; font-size: 15px; word-wrap: break-word; white-space: pre-wrap; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+        .msg { max-width: 85%; padding: 12px 16px; border-radius: 16px; line-height: 1.5; font-size: 15px; word-wrap: break-word; white-space: pre-wrap; }
         .user-msg { background: #1a73e8; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .ai-msg { background: #fff; color: #202124; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        .gallery { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
-        .gallery img { height: 90px; width: 120px; object-fit: cover; border-radius: 8px; }
-        .footer { background: #fff; padding: 12px 20px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+        .ai-msg { background: #fff; color: #202124; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); width: 85%; }
+        .gallery-title { font-size: 13px; font-weight: bold; color: #1a73e8; margin-top: 12px; margin-bottom: 6px; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 5px; }
+        .img-card { height: 100px; border-radius: 8px; overflow: hidden; background: #eee; border: 1px solid #e0e0e0; }
+        .img-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .footer { background: #fff; padding: 12px 16px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
         .footer input { flex: 1; padding: 12px 18px; border: 1px solid #ccc; border-radius: 25px; outline: none; font-size: 15px; }
         .footer button { background: #1a73e8; color: #fff; border: none; border-radius: 25px; padding: 12px 22px; cursor: pointer; font-weight: bold; }
         .clear-btn { background: #f1f3f4; color: #5f6368; border: none; border-radius: 15px; padding: 6px 12px; font-size: 12px; cursor: pointer; text-decoration: none; font-weight: normal; }
@@ -81,10 +89,15 @@ HTML = '''
             {% else %}
                 <div class="msg ai-msg">
                     <div>{{ m.text }}</div>
-                    {% if m.images %}
+                    {% if m.images and m.images|length > 0 %}
+                        <div class="gallery-title">🖼️ तस्वीरें:</div>
                         <div class="gallery">
                             {% for img in m.images %}
-                                <a href="{{ img }}" target="_blank"><img src="{{ img }}" loading="lazy" onerror="this.style.display='none'"></a>
+                                <div class="img-card">
+                                    <a href="{{ img }}" target="_blank">
+                                        <img src="{{ img }}" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+                                    </a>
+                                </div>
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -118,12 +131,14 @@ def home():
             live_data, images = get_live_search_data_and_images(user_query)
             context = f"\nWeb Search Data:\n{live_data}" if live_data else ""
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
+            
             prompt = (
                 f"You are 'Umang Raj AI' created by Umang Raj. "
-                f"Conversation history:\n{history_text}\n"
+                f"Previous chat:\n{history_text}\n"
                 f"{context}\n\n"
-                f"User Question: {user_query}\n"
-                f"Respond accurately in Hindi using the live search data if available."
+                f"User request: {user_query}\n"
+                f"Strict instruction: If user asks for images/photos or information, provide a short polite answer in Hindi. "
+                f"Never say 'I cannot show pictures' because pictures are automatically loaded by the system below your message."
             )
 
             try:
