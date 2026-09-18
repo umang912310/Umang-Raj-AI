@@ -18,10 +18,13 @@ def get_live_search_data_and_images(query):
             'q': query,
             'key': GOOGLE_API_KEY,
             'cx': SEARCH_ENGINE_ID,
-            'num': 3
+            'num': 4
         }
         res = requests.get(url, params=params, timeout=6).json()
-        text_snippets = [item.get('snippet', '') for item in res.get('items', [])]
+        for item in res.get('items', []):
+            title = item.get('title', '')
+            snippet = item.get('snippet', '')
+            text_snippets.append(f"{title}: {snippet}")
     except Exception:
         pass
 
@@ -131,17 +134,19 @@ def home():
         if user_query:
             session['messages'].append({'role': 'user', 'text': user_query})
             live_data, images = get_live_search_data_and_images(user_query)
-            context = f"\nताज़ा इंटरनेट डेटा:\n{live_data}" if live_data else ""
+            
             history_text = "\n".join([f"{m['role']}: {m['text']}" for m in session['messages'][-4:]])
             
             prompt = (
-                f"आप 'Umang Raj AI' हैं। "
-                f"सख्त निर्देश: यदि कोई आपसे पूछे कि आपको किसने बनाया है, आपका निर्माता या डेवलपर कौन है, "
-                f"तो आपको स्पष्ट रूप से यही बताना है: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
-                f"पिछली बातचीत:\n{history_text}\n"
-                f"{context}\n\n"
+                f"आप 'Umang Raj AI' हैं।\n"
+                f"सख्त नियम:\n"
+                f"1. जब तक यूज़र आपसे यह न पूछे कि 'तुम्हें किसने बनाया है' या 'तुम्हारा डेवलपर कौन है', तब तक अपने निर्माता का परिचय न दें। केवल पूछे जाने पर ही कहें: 'मुझे उमंग राज (Umang Raj) ने बनाया है, जो रामपुर चौरम गांव, जिला अरवल, बिहार के रहने वाले हैं।'\n"
+                f"2. कभी भी यह मत कहना कि आपका डेटा पुराना है। नीचे दिए गए Google लाइव सर्च डेटा को पढ़ें और उसी के आधार पर ताज़ा उत्तर दें।\n"
+                f"3. कभी यह मत कहना कि तस्वीरें नहीं दिखा सकते।\n\n"
+                f"ताज़ा Google सर्च डेटा:\n{live_data}\n\n"
+                f"पिछली बातचीत:\n{history_text}\n\n"
                 f"यूज़र का सवाल: {user_query}\n"
-                f"कृपया बातचीत और ताज़ा डेटा के आधार पर हिंदी में सही उत्तर दें। कभी यह मत कहना कि तस्वीर नहीं दिखा सकते, क्योंकि तस्वीरें नीचे अपने-आप लोड होती हैं।"
+                f"कृपया हिंदी में सीधा और सटीक उत्तर दें।"
             )
 
             ai_reply = ""
@@ -158,7 +163,7 @@ def home():
 
             if not ai_reply:
                 try:
-                    get_res = requests.get(f"https://text.pollinations.ai/{requests.utils.quote(user_query)}", timeout=15)
+                    get_res = requests.get(f"https://text.pollinations.ai/{requests.utils.quote(prompt)}", timeout=15)
                     if get_res.status_code == 200:
                         ai_reply = get_res.text.strip()
                 except Exception:
@@ -176,4 +181,3 @@ def clear():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-    
