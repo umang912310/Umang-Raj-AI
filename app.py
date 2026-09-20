@@ -361,19 +361,19 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         </footer>
     </div>
 
-    <!-- संपूर्ण जावास्क्रिप्ट लॉजिक -->
+    <!-- JavaScript Logic -->
     <script>
         let isVoiceReplyEnabled = true;
         let recognition = null;
         let isListening = false;
         let finalSpokenText = "";
 
-        // 1. हाई-एक्यूरेसी स्पीच रिकग्निशन
+        // 1. Speech Recognition Setup
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.interimResults = true; // बोलते समय स्क्रीन पर लाइव दिखना
+            recognition.interimResults = true;
             recognition.lang = 'hi-IN';
 
             recognition.onstart = function() {
@@ -405,7 +405,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
 
             recognition.onend = function() {
                 stopListening();
-                // बोलना बंद होते ही अगर कुछ बोला गया है तो खुद सेंड हो जाएगा
                 const text = document.getElementById("userInput").value.trim();
                 if (text) {
                     sendMsg();
@@ -415,7 +414,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
 
         function toggleListening() {
             if (!recognition) {
-                alert("आपके डिवाइस के वेबव्यू में माइक सपोर्ट नहीं है। कृपया ऐप को माइक्रोफ़ोन अनुमति दें।");
+                alert("माइक्रोफ़ोन सपोर्ट नहीं मिला। कृपया परमिशन चेक करें।");
                 return;
             }
             if (isListening) {
@@ -441,7 +440,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             document.getElementById("userInput").placeholder = "संदेश लिखें या माइक दबाकर बोलें...";
         }
 
-        // 2. टेक्स्ट-टू-स्पीच आउटपुट
+        // 2. Text to Speech
         function speakText(text) {
             if (!isVoiceReplyEnabled || !('speechSynthesis' in window)) return;
             const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
@@ -463,7 +462,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             }
         }
 
-        // 3. साइडबार एवं चैट हिस्ट्री
+        // 3. Drawer & History
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("open");
             loadHistory();
@@ -497,7 +496,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             if (welcome) welcome.style.display = "none";
         }
 
-        // 4. मैसेज सेंड करना एवं चैट प्रोसेस
+        // 4. Send Message & Chat Logic
         async function sendMsg() {
             const input = document.getElementById("userInput");
             const text = input.value.trim();
@@ -540,7 +539,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             box.scrollTop = box.scrollHeight;
         }
 
-        // 5. चैट रीसेट
+        // 5. Reset
         async function resetChat() {
             window.speechSynthesis.cancel();
             await fetch("/reset", { method: "POST" });
@@ -619,3 +618,18 @@ def chat_handler(req: ChatPayload):
         chat_memory.append({"role": "ai", "content": bot_response})
         if len(chat_memory) > (MAX_MEMORY * 2):
             chat_memory = chat_memory[-(MAX_MEMORY * 2):]
+
+        return {"reply": bot_response, "type": "text"}
+    except Exception as e:
+        return {"reply": f"Error: {str(e)}", "type": "text"}
+
+@app.post("/reset")
+def reset_handler():
+    global chat_memory, search_history
+    chat_memory.clear()
+    search_history.clear()
+    return {"status": "cleared"}
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
