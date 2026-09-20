@@ -619,5 +619,3 @@ def chat_handler(req: ChatPayload):
         chat_memory.append({"role": "ai", "content": bot_response})
         if len(chat_memory) > (MAX_MEMORY * 2):
             chat_memory = chat_memory[-(MAX_MEMORY * 2):]
-
-        retu
