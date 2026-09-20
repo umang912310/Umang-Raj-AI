@@ -27,7 +27,7 @@ class ChatPayload(BaseModel):
     message: str
 
 HTML_CONTENT = r"""<!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             overflow: hidden;
         }
 
-        /* Sidebar History Drawer */
+        /* Sidebar History */
         #sidebar {
             width: 280px;
             background-color: #1e293b;
@@ -92,10 +92,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        .close-btn:hover {
-            color: #ffffff;
-        }
-
         #history-list {
             flex: 1;
             overflow-y: auto;
@@ -127,6 +123,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             flex-direction: column;
             height: 100vh;
             width: 100%;
+            position: relative;
         }
 
         header {
@@ -136,21 +133,16 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #334155;
+            z-index: 5;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .header-right {
+        .header-left, .header-right {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .menu-btn {
+        .menu-btn, .voice-toggle-btn {
             background-color: #334155;
             border: none;
             color: #ffffff;
@@ -158,16 +150,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
-        }
-
-        .voice-toggle-btn {
-            background-color: #334155;
-            border: none;
-            color: #ffffff;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
         }
 
         h1 {
@@ -186,7 +168,54 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        /* Chat Output Screen */
+        /* बीच में दिखने वाला गौरव और उमंग AI वेलकम सेक्शन */
+        #welcome-section {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 450px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .logo-circle {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .welcome-title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #38bdf8;
+            letter-spacing: 1px;
+        }
+
+        .welcome-desc {
+            font-size: 15px;
+            color: #94a3b8;
+            line-height: 1.6;
+            background-color: rgba(30, 41, 59, 0.7);
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        /* Chat Output */
         #chat-box {
             flex: 1;
             overflow-y: auto;
@@ -194,6 +223,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             display: flex;
             flex-direction: column;
             gap: 12px;
+            z-index: 3;
         }
 
         .msg {
@@ -219,48 +249,11 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             border-bottom-left-radius: 2px;
         }
 
-        .ai p {
-            margin-bottom: 8px;
-        }
+        .ai p { margin-bottom: 8px; }
+        .ai p:last-child { margin-bottom: 0; }
+        .ai img { max-width: 100%; border-radius: 8px; margin-top: 6px; }
 
-        .ai p:last-child {
-            margin-bottom: 0;
-        }
-
-        .ai ul, .ai ol {
-            margin-left: 20px;
-            margin-bottom: 8px;
-        }
-
-        .ai code {
-            background-color: #1e293b;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 13px;
-        }
-
-        .ai pre {
-            background-color: #1e293b;
-            padding: 12px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 8px 0;
-        }
-
-        .ai pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .ai img {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 6px;
-            display: block;
-        }
-
-        /* Bottom Controls */
+        /* Footer Input Controls */
         footer {
             padding: 12px 16px;
             background-color: #1e293b;
@@ -268,6 +261,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             gap: 8px;
             align-items: center;
             border-top: 1px solid #334155;
+            z-index: 5;
         }
 
         input {
@@ -281,9 +275,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             font-size: 15px;
         }
 
-        input:focus {
-            border-color: #38bdf8;
-        }
+        input:focus { border-color: #38bdf8; }
 
         .mic-btn {
             background-color: #0284c7;
@@ -334,12 +326,12 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         <ul id="history-list"></ul>
     </div>
 
-    <!-- Main Container -->
+    <!-- Main App Container -->
     <div id="main-container">
         <header>
             <div class="header-left">
                 <button class="menu-btn" onclick="toggleSidebar()">☰ History</button>
-                <h1>Umang Raj AI</h1>
+                <h1>Umang AI</h1>
             </div>
             <div class="header-right">
                 <button id="voiceToggle" class="voice-toggle-btn" onclick="toggleVoiceReply()">🔊 Voice: ON</button>
@@ -347,11 +339,20 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             </div>
         </header>
 
+        <!-- बीच में दिखने वाला गौरव और उमंग AI कार्ड -->
+        <div id="welcome-section">
+            <div class="logo-circle">⚡</div>
+            <div class="welcome-title">Umang AI</div>
+            <div class="welcome-desc">
+                नमस्ते! मेरा नाम <strong>गौरव</strong> है। मैं उमंग राज का पर्सनल एआई असिस्टेंट हूँ। मुझसे कोई भी सवाल पूछें या फोटो बनाने को कहें!
+            </div>
+        </div>
+
         <div id="chat-box"></div>
 
         <footer>
-            <button id="micBtn" class="mic-btn" onclick="toggleListening()" title="Speak">🎙️</button>
-            <input type="text" id="userInput" placeholder="Type or click mic to speak..." onkeydown="if(event.key==='Enter') sendMsg()">
+            <button id="micBtn" class="mic-btn" onclick="toggleListening()" title="बोलकर पूछें">🎙️</button>
+            <input type="text" id="userInput" placeholder="संदेश लिखें या माइक दबाकर बोलें..." onkeydown="if(event.key==='Enter') sendMsg()">
             <button id="send" onclick="sendMsg()">Send</button>
         </footer>
     </div>
@@ -361,7 +362,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         let recognition = null;
         let isListening = false;
 
-        // Speech Recognition (Speech to Text)
+        // Speech-to-Text Setup
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
@@ -380,13 +381,8 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                 sendMsg();
             };
 
-            recognition.onerror = function() {
-                stopListening();
-            };
-
-            recognition.onend = function() {
-                stopListening();
-            };
+            recognition.onerror = function() { stopListening(); };
+            recognition.onend = function() { stopListening(); };
         }
 
         function toggleListening() {
@@ -411,7 +407,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             document.getElementById("micBtn").classList.remove("listening");
         }
 
-        // Text to Speech (Voice Output)
+        // Text-to-Speech Setup
         function speakText(text) {
             if (!isVoiceReplyEnabled || !('speechSynthesis' in window)) return;
             const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
@@ -461,11 +457,17 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             } catch (err) {}
         }
 
+        function hideWelcomeSection() {
+            const welcome = document.getElementById("welcome-section");
+            if (welcome) welcome.style.display = "none";
+        }
+
         async function sendMsg() {
             const input = document.getElementById("userInput");
             const text = input.value.trim();
             if (!text) return;
 
+            hideWelcomeSection(); // मैसेज भेजते ही बीच का वेलकम कार्ड हट जाएगा
             addBubble(text, "user", false);
             input.value = "";
 
@@ -478,14 +480,14 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                 const data = await res.json();
                 if (data.type === "image") {
                     addBubble('<img src="' + data.reply + '" alt="Generated">', "ai", true);
-                    speakText("Here is your generated image.");
+                    speakText("मैंने आपकी तस्वीर तैयार कर दी है।");
                 } else {
                     const formattedHtml = marked.parse(data.reply);
                     addBubble(formattedHtml, "ai", true);
                     speakText(data.reply);
                 }
             } catch (err) {
-                addBubble("Server error. Please try again.", "ai", false);
+                addBubble("त्रुटि: सर्वर से कनेक्ट नहीं हो सका।", "ai", false);
             }
         }
 
@@ -507,7 +509,12 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             await fetch("/reset", { method: "POST" });
             document.getElementById("chat-box").innerHTML = "";
             document.getElementById("history-list").innerHTML = "";
-            addBubble("Chat history cleared.", "ai", false);
+            
+            // रीसेट करने पर वेलकम कार्ड वापस दिखेगा
+            const welcome = document.getElementById("welcome-section");
+            if (welcome) welcome.style.display = "flex";
+            
+            addBubble("चैट साफ़ कर दी गई है।", "ai", false);
         }
     </script>
 </body>
@@ -527,7 +534,7 @@ def chat_handler(req: ChatPayload):
     try:
         raw_text = req.message.strip()
         if not raw_text:
-            return {"reply": "Message cannot be empty.", "type": "text"}
+            return {"reply": "संदेश खाली नहीं हो सकता।", "type": "text"}
 
         search_history.append(raw_text)
 
@@ -542,11 +549,12 @@ def chat_handler(req: ChatPayload):
             chat_memory.append({"role": "ai", "content": img_url})
             return {"reply": img_url, "type": "image"}
 
+        # गौरव के रूप में पहचान और सामान्य बातचीत का निर्देश
         system_instruction = (
-            "You are Umang Raj AI, a warm, intelligent, and natural conversational AI assistant for Umang Raj. "
-            "Talk naturally in a polite, human-like tone using Hindi/Hinglish or English depending on user input. "
-            "DO NOT write code or programming syntax unless the user explicitly asks for code. "
-            "Provide helpful, direct, and conversational responses.\n\n"
+            "You are Gaurav, a smart, polite, and natural conversational AI assistant built for Umang Raj in Umang AI. "
+            "Whenever asked who you are, introduce yourself as Gaurav, Umang Raj's personal AI. "
+            "Talk naturally in Hindi/Hinglish or English depending on user input. "
+            "DO NOT output code unless explicitly requested.\n\n"
         )
 
         history = system_instruction + "Conversation History:\n"
@@ -556,7 +564,7 @@ def chat_handler(req: ChatPayload):
 
         url = f"https://text.pollinations.ai/{urllib.parse.quote(history)}?model=mistral"
         res = requests.get(url, timeout=30)
-        bot_response = res.text.strip() if res.status_code == 200 else "Server busy. Please try again."
+        bot_response = res.text.strip() if res.status_code == 200 else "सर्वर व्यस्त है, कृपया पुनः प्रयास करें।"
 
         chat_memory.append({"role": "user", "content": raw_text})
         chat_memory.append({"role": "ai", "content": bot_response})
@@ -577,4 +585,3 @@ def reset_handler():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-               
