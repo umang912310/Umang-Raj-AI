@@ -1,15 +1,6 @@
 import os
-import sys
-import subprocess
 import urllib.parse
 from typing import List, Dict
-
-# Auto package installer
-for pkg in ["fastapi", "uvicorn", "requests", "pydantic"]:
-    try:
-        __import__(pkg)
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
 
 import requests
 import uvicorn
@@ -35,7 +26,6 @@ MAX_MEMORY = 10
 class ChatPayload(BaseModel):
     message: str
 
-# Raw String (r""") to avoid Python escape character issues
 HTML_CONTENT = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -587,3 +577,4 @@ def reset_handler():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+               
