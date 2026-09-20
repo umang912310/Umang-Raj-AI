@@ -49,7 +49,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             overflow: hidden;
         }
 
-        /* Sidebar History */
+        /* Sidebar Drawer */
         #sidebar {
             width: 280px;
             background-color: #1e293b;
@@ -90,6 +90,10 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             color: #94a3b8;
             font-size: 20px;
             cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: #ffffff;
         }
 
         #history-list {
@@ -168,7 +172,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        /* बीच में दिखने वाला गौरव और उमंग AI वेलकम सेक्शन */
+        /* Hero Welcome Screen */
         #welcome-section {
             position: absolute;
             top: 45%;
@@ -253,7 +257,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         .ai p:last-child { margin-bottom: 0; }
         .ai img { max-width: 100%; border-radius: 8px; margin-top: 6px; }
 
-        /* Footer Input Controls */
+        /* Input Footer */
         footer {
             padding: 12px 16px;
             background-color: #1e293b;
@@ -339,7 +343,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             </div>
         </header>
 
-        <!-- बीच में दिखने वाला गौरव और उमंग AI कार्ड -->
+        <!-- Welcome Hero Section -->
         <div id="welcome-section">
             <div class="logo-circle">⚡</div>
             <div class="welcome-title">Umang AI</div>
@@ -357,37 +361,61 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         </footer>
     </div>
 
+    <!-- संपूर्ण जावास्क्रिप्ट लॉजिक -->
     <script>
         let isVoiceReplyEnabled = true;
         let recognition = null;
         let isListening = false;
+        let finalSpokenText = "";
 
-        // Speech-to-Text Setup
+        // 1. हाई-एक्यूरेसी स्पीच रिकग्निशन
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.interimResults = true; // बोलते समय स्क्रीन पर लाइव दिखना
             recognition.lang = 'hi-IN';
 
             recognition.onstart = function() {
                 isListening = true;
-                document.getElementById("micBtn").classList.add("listening");
+                finalSpokenText = "";
+                const mic = document.getElementById("micBtn");
+                mic.classList.add("listening");
+                mic.innerText = "🛑";
+                document.getElementById("userInput").placeholder = "सुन रहा हूँ, बोलिए...";
             };
 
             recognition.onresult = function(event) {
-                const speechText = event.results[0][0].transcript;
-                document.getElementById("userInput").value = speechText;
-                sendMsg();
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalSpokenText += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+                const currentText = finalSpokenText || interim;
+                document.getElementById("userInput").value = currentText;
             };
 
-            recognition.onerror = function() { stopListening(); };
-            recognition.onend = function() { stopListening(); };
+            recognition.onerror = function(event) {
+                console.error("Speech Recognition Error:", event.error);
+                stopListening();
+            };
+
+            recognition.onend = function() {
+                stopListening();
+                // बोलना बंद होते ही अगर कुछ बोला गया है तो खुद सेंड हो जाएगा
+                const text = document.getElementById("userInput").value.trim();
+                if (text) {
+                    sendMsg();
+                }
+            };
         }
 
         function toggleListening() {
             if (!recognition) {
-                alert("Microphone not supported on this view.");
+                alert("आपके डिवाइस के वेबव्यू में माइक सपोर्ट नहीं है। कृपया ऐप को माइक्रोफ़ोन अनुमति दें।");
                 return;
             }
             if (isListening) {
@@ -395,6 +423,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                 stopListening();
             } else {
                 try {
+                    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
                     recognition.start();
                 } catch(e) {
                     recognition.stop();
@@ -404,10 +433,15 @@ HTML_CONTENT = r"""<!DOCTYPE html>
 
         function stopListening() {
             isListening = false;
-            document.getElementById("micBtn").classList.remove("listening");
+            const mic = document.getElementById("micBtn");
+            if (mic) {
+                mic.classList.remove("listening");
+                mic.innerText = "🎙️";
+            }
+            document.getElementById("userInput").placeholder = "संदेश लिखें या माइक दबाकर बोलें...";
         }
 
-        // Text-to-Speech Setup
+        // 2. टेक्स्ट-टू-स्पीच आउटपुट
         function speakText(text) {
             if (!isVoiceReplyEnabled || !('speechSynthesis' in window)) return;
             const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
@@ -429,6 +463,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             }
         }
 
+        // 3. साइडबार एवं चैट हिस्ट्री
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("open");
             loadHistory();
@@ -462,12 +497,13 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             if (welcome) welcome.style.display = "none";
         }
 
+        // 4. मैसेज सेंड करना एवं चैट प्रोसेस
         async function sendMsg() {
             const input = document.getElementById("userInput");
             const text = input.value.trim();
             if (!text) return;
 
-            hideWelcomeSection(); // मैसेज भेजते ही बीच का वेलकम कार्ड हट जाएगा
+            hideWelcomeSection();
             addBubble(text, "user", false);
             input.value = "";
 
@@ -480,7 +516,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                 const data = await res.json();
                 if (data.type === "image") {
                     addBubble('<img src="' + data.reply + '" alt="Generated">', "ai", true);
-                    speakText("मैंने आपकी तस्वीर तैयार कर दी है।");
+                    speakText("मैंने आपके लिए यह तस्वीर तैयार कर दी है।");
                 } else {
                     const formattedHtml = marked.parse(data.reply);
                     addBubble(formattedHtml, "ai", true);
@@ -504,17 +540,17 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             box.scrollTop = box.scrollHeight;
         }
 
+        // 5. चैट रीसेट
         async function resetChat() {
             window.speechSynthesis.cancel();
             await fetch("/reset", { method: "POST" });
             document.getElementById("chat-box").innerHTML = "";
             document.getElementById("history-list").innerHTML = "";
             
-            // रीसेट करने पर वेलकम कार्ड वापस दिखेगा
             const welcome = document.getElementById("welcome-section");
             if (welcome) welcome.style.display = "flex";
             
-            addBubble("चैट साफ़ कर दी गई है।", "ai", false);
+            addBubble("चैट हिस्ट्री साफ़ कर दी गई है।", "ai", false);
         }
     </script>
 </body>
@@ -549,39 +585,39 @@ def chat_handler(req: ChatPayload):
             chat_memory.append({"role": "ai", "content": img_url})
             return {"reply": img_url, "type": "image"}
 
-        # गौरव के रूप में पहचान और सामान्य बातचीत का निर्देश
         system_instruction = (
             "You are Gaurav, a smart, polite, and natural conversational AI assistant built for Umang Raj in Umang AI. "
             "Whenever asked who you are, introduce yourself as Gaurav, Umang Raj's personal AI. "
             "Talk naturally in Hindi/Hinglish or English depending on user input. "
-            "DO NOT output code unless explicitly requested.\n\n"
+            "DO NOT output code unless explicitly requested."
         )
 
-        history = system_instruction + "Conversation History:\n"
+        messages = [{"role": "system", "content": system_instruction}]
         for turn in chat_memory[-MAX_MEMORY:]:
-            history += f"{turn['role'].upper()}: {turn['content']}\n"
-        history += f"USER: {raw_text}\nAI:"
+            messages.append({"role": "user" if turn["role"] == "user" else "assistant", "content": turn["content"]})
+        messages.append({"role": "user", "content": raw_text})
 
-        url = f"https://text.pollinations.ai/{urllib.parse.quote(history)}?model=mistral"
-        res = requests.get(url, timeout=30)
-        bot_response = res.text.strip() if res.status_code == 200 else "सर्वर व्यस्त है, कृपया पुनः प्रयास करें।"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "messages": messages,
+            "model": "openai",
+            "seed": 42
+        }
+
+        try:
+            res = requests.post("https://text.pollinations.ai/", json=payload, headers=headers, timeout=25)
+            if res.status_code == 200 and res.text.strip():
+                bot_response = res.text.strip()
+            else:
+                raise Exception("Primary failed")
+        except Exception:
+            prompt_encoded = urllib.parse.quote(f"{system_instruction}\nUser: {raw_text}\nGaurav:")
+            fallback_res = requests.get(f"https://text.pollinations.ai/{prompt_encoded}?model=search", timeout=15)
+            bot_response = fallback_res.text.strip() if fallback_res.status_code == 200 else "माफ़ कीजिए, सर्वर व्यस्त है। कृपया पुनः प्रयास करें।"
 
         chat_memory.append({"role": "user", "content": raw_text})
         chat_memory.append({"role": "ai", "content": bot_response})
         if len(chat_memory) > (MAX_MEMORY * 2):
             chat_memory = chat_memory[-(MAX_MEMORY * 2):]
 
-        return {"reply": bot_response, "type": "text"}
-    except Exception as e:
-        return {"reply": f"Error: {str(e)}", "type": "text"}
-
-@app.post("/reset")
-def reset_handler():
-    global chat_memory, search_history
-    chat_memory.clear()
-    search_history.clear()
-    return {"status": "cleared"}
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+        retu
