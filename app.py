@@ -4,7 +4,7 @@ import subprocess
 import urllib.parse
 from typing import List, Dict
 
-# ऑटो पैकेज इंस्टॉलेशन
+# Auto package installer
 for pkg in ["fastapi", "uvicorn", "requests", "pydantic"]:
     try:
         __import__(pkg)
@@ -41,13 +41,11 @@ HTML_CONTENT = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Umang AI</title>
-    <!-- Markdown को साफ़ टेक्स्ट में बदलने के लिए लाइब्रेरी -->
-    <script src="[https://cdn.jsdelivr.net/npm/marked/marked.min.js](https://cdn.jsdelivr.net/npm/marked/marked.min.js)"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #0f172a; color: white; display: flex; height: 100vh; overflow: hidden; }
         
-        /* साइडबार / हिस्ट्री */
         #sidebar {
             width: 260px;
             background: #1e293b;
@@ -81,7 +79,6 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
         .history-item:hover { background: #475569; }
 
-        /* मुख्य चैट एरिया */
         #main-container { flex: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; }
         header { padding: 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
         .header-left { display: flex; align-items: center; gap: 10px; }
@@ -94,7 +91,6 @@ HTML_CONTENT = """<!DOCTYPE html>
         .user { align-self: flex-end; background: #2563eb; }
         .ai { align-self: flex-start; background: #334155; }
         
-        /* Markdown टेक्स्ट स्टाइलिंग */
         .ai p { margin-bottom: 8px; }
         .ai p:last-child { margin-bottom: 0; }
         .ai ul, .ai ol { margin-left: 20px; margin-bottom: 8px; }
@@ -112,7 +108,7 @@ HTML_CONTENT = """<!DOCTYPE html>
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>सर्च हिस्ट्री</h2>
+            <h2>History</h2>
             <button class="close-btn" onclick="toggleSidebar()">✕</button>
         </div>
         <ul id="history-list"></ul>
@@ -121,14 +117,14 @@ HTML_CONTENT = """<!DOCTYPE html>
     <div id="main-container">
         <header>
             <div class="header-left">
-                <button class="menu-btn" onclick="toggleSidebar()">☰ हिस्ट्री</button>
+                <button class="menu-btn" onclick="toggleSidebar()">☰ History</button>
                 <h1>Umang Raj AI</h1>
             </div>
             <button id="reset" onclick="resetChat()">Reset</button>
         </header>
         <div id="chat-box"></div>
         <footer>
-            <input type="text" id="userInput" placeholder="संदेश लिखें या फोटो बनाने को कहें..." onkeydown="if(event.key==='Enter') sendMsg()">
+            <input type="text" id="userInput" placeholder="Type a message or ask to make image..." onkeydown="if(event.key==='Enter') sendMsg()">
             <button id="send" onclick="sendMsg()">Send</button>
         </footer>
     </div>
@@ -146,7 +142,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                 const list = document.getElementById("history-list");
                 list.innerHTML = "";
                 if (data.history.length === 0) {
-                    list.innerHTML = "<li style='color:#94a3b8; font-size:12px; padding:10px;'>कोई हिस्ट्री नहीं है।</li>";
+                    list.innerHTML = "<li style='color:#94a3b8; font-size:12px; padding:10px;'>No history found.</li>";
                     return;
                 }
                 data.history.forEach(item => {
@@ -180,12 +176,11 @@ HTML_CONTENT = """<!DOCTYPE html>
                 if (data.type === "image") {
                     addBubble('<img src="' + data.reply + '" alt="Generated">', "ai", true);
                 } else {
-                    // Markdown को अच्छे फ़ॉर्मेटेड HTML में बदलें
                     const formattedHtml = marked.parse(data.reply);
                     addBubble(formattedHtml, "ai", true);
                 }
             } catch (err) {
-                addBubble("त्रुटि: सर्वर से कनेक्ट नहीं हो सका।", "ai", false);
+                addBubble("Server error. Please try again.", "ai", false);
             }
         }
 
@@ -206,7 +201,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             await fetch("/reset", { method: "POST" });
             document.getElementById("chat-box").innerHTML = "";
             document.getElementById("history-list").innerHTML = "";
-            addBubble("चैट हिस्ट्री साफ़ कर दी गई है।", "ai", false);
+            addBubble("Chat history cleared.", "ai", false);
         }
     </script>
 </body>
@@ -225,7 +220,7 @@ def chat_handler(req: ChatPayload):
     global chat_memory, search_history
     raw_text = req.message.strip()
     if not raw_text:
-        return {"reply": "संदेश खाली नहीं हो सकता।", "type": "text"}
+        return {"reply": "Message cannot be empty.", "type": "text"}
 
     search_history.append(raw_text)
 
@@ -235,12 +230,11 @@ def chat_handler(req: ChatPayload):
         for k in img_keywords:
             clean = clean.lower().replace(k, "").strip()
         encoded = urllib.parse.quote(clean or raw_text)
-        img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded}?width=1024&height=1024&nologo=true"
+        img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
         chat_memory.append({"role": "user", "content": raw_text})
         chat_memory.append({"role": "ai", "content": img_url})
         return {"reply": img_url, "type": "image"}
 
-    # मॉडल को सामान्य इंसानी बातचीत का सख्त निर्देश (System Prompt)
     system_instruction = (
         "You are Umang Raj AI, a warm, intelligent, and natural conversational AI assistant for Umang Raj. "
         "Talk naturally in a polite, human-like tone using Hindi/Hinglish or English depending on user input. "
@@ -253,12 +247,12 @@ def chat_handler(req: ChatPayload):
         history += f"{turn['role'].upper()}: {turn['content']}\n"
     history += f"USER: {raw_text}\nAI:"
 
-    url = f"[https://text.pollinations.ai/](https://text.pollinations.ai/){urllib.parse.quote(history)}?model=mistral"
+    url = f"https://text.pollinations.ai/{urllib.parse.quote(history)}?model=mistral"
     try:
         res = requests.get(url, timeout=30)
-        bot_response = res.text.strip() if res.status_code == 200 else "सर्वर से उत्तर नहीं मिला।"
+        bot_response = res.text.strip() if res.status_code == 200 else "Server busy. Please try again."
     except Exception as e:
-        bot_response = f"त्रुटि: {str(e)}"
+        bot_response = f"Error: {str(e)}"
 
     chat_memory.append({"role": "user", "content": raw_text})
     chat_memory.append({"role": "ai", "content": bot_response})
@@ -277,5 +271,4 @@ def reset_handler():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-                
+    
