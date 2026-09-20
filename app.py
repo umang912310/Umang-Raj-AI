@@ -46,6 +46,7 @@ HTML_CONTENT = """<!DOCTYPE html>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #0f172a; color: white; display: flex; height: 100vh; overflow: hidden; }
         
+        /* Sidebar History */
         #sidebar {
             width: 260px;
             background: #1e293b;
@@ -79,10 +80,13 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
         .history-item:hover { background: #475569; }
 
+        /* Main Container */
         #main-container { flex: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; }
         header { padding: 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
         .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
         .menu-btn { background: #334155; border: none; color: white; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+        .voice-toggle-btn { background: #334155; border: none; color: white; padding: 6px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
         h1 { font-size: 18px; color: #38bdf8; }
         button#reset { background: #ef4444; border: none; padding: 6px 12px; color: white; border-radius: 5px; cursor: pointer; }
         
@@ -99,9 +103,17 @@ HTML_CONTENT = """<!DOCTYPE html>
         .ai pre code { background: none; padding: 0; }
         .ai img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
 
-        footer { padding: 12px; background: #1e293b; display: flex; gap: 8px; }
+        footer { padding: 12px; background: #1e293b; display: flex; gap: 8px; align-items: center; }
         input { flex: 1; padding: 12px; border-radius: 8px; border: none; outline: none; background: #334155; color: white; font-size: 15px; }
-        button#send { background: #38bdf8; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; color: #0f172a; }
+        .mic-btn { background: #0284c7; border: none; width: 44px; height: 44px; border-radius: 8px; color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .mic-btn.listening { background: #ef4444; animation: pulse 1s infinite; }
+        button#send { background: #38bdf8; border: none; padding: 0 16px; height: 44px; border-radius: 8px; font-weight: bold; cursor: pointer; color: #0f172a; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -120,16 +132,96 @@ HTML_CONTENT = """<!DOCTYPE html>
                 <button class="menu-btn" onclick="toggleSidebar()">☰ History</button>
                 <h1>Umang Raj AI</h1>
             </div>
-            <button id="reset" onclick="resetChat()">Reset</button>
+            <div class="header-right">
+                <button id="voiceToggle" class="voice-toggle-btn" onclick="toggleVoiceReply()">🔊 Voice: ON</button>
+                <button id="reset" onclick="resetChat()">Reset</button>
+            </div>
         </header>
         <div id="chat-box"></div>
         <footer>
-            <input type="text" id="userInput" placeholder="Type a message or ask to make image..." onkeydown="if(event.key==='Enter') sendMsg()">
+            <button id="micBtn" class="mic-btn" onclick="toggleListening()" title="Speak">🎙️</button>
+            <input type="text" id="userInput" placeholder="Type or click mic to speak..." onkeydown="if(event.key==='Enter') sendMsg()">
             <button id="send" onclick="sendMsg()">Send</button>
         </footer>
     </div>
 
     <script>
+        let isVoiceReplyEnabled = true;
+        let recognition = null;
+        let isListening = false;
+
+        // Speech-to-Text Setup
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'hi-IN';
+
+            recognition.onstart = function() {
+                isListening = true;
+                document.getElementById("micBtn").classList.add("listening");
+            };
+
+            recognition.onresult = function(event) {
+                const speechText = event.results[0][0].transcript;
+                document.getElementById("userInput").value = speechText;
+                sendMsg();
+            };
+
+            recognition.onerror = function(event) {
+                stopListening();
+            };
+
+            recognition.onend = function() {
+                stopListening();
+            };
+        }
+
+        function toggleListening() {
+            if (!recognition) {
+                alert("Microphone not supported on this browser/app view.");
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+                stopListening();
+            } else {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    recognition.stop();
+                }
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            document.getElementById("micBtn").classList.remove("listening");
+        }
+
+        // Text-to-Speech Output
+        function speakText(text) {
+            if (!isVoiceReplyEnabled || !('speechSynthesis' in window)) return;
+            const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'hi-IN';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleVoiceReply() {
+            isVoiceReplyEnabled = !isVoiceReplyEnabled;
+            const btn = document.getElementById("voiceToggle");
+            if (isVoiceReplyEnabled) {
+                btn.innerText = "🔊 Voice: ON";
+            } else {
+                window.speechSynthesis.cancel();
+                btn.innerText = "🔇 Voice: OFF";
+            }
+        }
+
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("open");
             loadHistory();
@@ -175,9 +267,11 @@ HTML_CONTENT = """<!DOCTYPE html>
                 const data = await res.json();
                 if (data.type === "image") {
                     addBubble('<img src="' + data.reply + '" alt="Generated">', "ai", true);
+                    speakText("मैंने आपके लिए यह तस्वीर बना दी है।");
                 } else {
                     const formattedHtml = marked.parse(data.reply);
                     addBubble(formattedHtml, "ai", true);
+                    speakText(data.reply);
                 }
             } catch (err) {
                 addBubble("Server error. Please try again.", "ai", false);
@@ -198,6 +292,7 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         async function resetChat() {
+            window.speechSynthesis.cancel();
             await fetch("/reset", { method: "POST" });
             document.getElementById("chat-box").innerHTML = "";
             document.getElementById("history-list").innerHTML = "";
