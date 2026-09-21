@@ -52,7 +52,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             overflow: hidden;
         }
 
-        /* Sidebar Drawer */
         #sidebar {
             width: 280px;
             background-color: #1e293b;
@@ -69,9 +68,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             transform: translateX(-100%);
         }
 
-        #sidebar.open {
-            transform: translateX(0);
-        }
+        #sidebar.open { transform: translateX(0); }
 
         .sidebar-header {
             padding: 16px;
@@ -81,19 +78,8 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             border-bottom: 1px solid #334155;
         }
 
-        .sidebar-header h2 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #38bdf8;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 20px;
-            cursor: pointer;
-        }
+        .sidebar-header h2 { font-size: 16px; font-weight: 600; color: #38bdf8; }
+        .close-btn { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
 
         #history-list {
             flex: 1;
@@ -114,7 +100,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             word-break: break-word;
         }
 
-        /* Main Container */
         #main-container {
             flex: 1;
             display: flex;
@@ -134,12 +119,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             z-index: 5;
         }
 
-        .header-left, .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        .header-left, .header-right { display: flex; align-items: center; gap: 8px; }
         .menu-btn, .voice-toggle-btn {
             background-color: #334155;
             border: none;
@@ -150,12 +130,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             font-size: 13px;
         }
 
-        h1 {
-            font-size: 18px;
-            font-weight: bold;
-            color: #38bdf8;
-        }
-
+        h1 { font-size: 18px; font-weight: bold; color: #38bdf8; }
         button#reset {
             background-color: #ef4444;
             border: none;
@@ -166,7 +141,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        /* Welcome Section */
         #welcome-section {
             position: absolute;
             top: 45%;
@@ -196,13 +170,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
         }
 
-        .welcome-title {
-            font-size: 26px;
-            font-weight: bold;
-            color: #38bdf8;
-            letter-spacing: 1px;
-        }
-
+        .welcome-title { font-size: 26px; font-weight: bold; color: #38bdf8; letter-spacing: 1px; }
         .welcome-desc {
             font-size: 15px;
             color: #94a3b8;
@@ -213,7 +181,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             border: 1px solid #334155;
         }
 
-        /* Chat Output */
         #chat-box {
             flex: 1;
             overflow-y: auto;
@@ -233,20 +200,8 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             font-size: 15px;
         }
 
-        .user {
-            align-self: flex-end;
-            background-color: #2563eb;
-            color: #ffffff;
-            border-bottom-right-radius: 2px;
-        }
-
-        .ai {
-            align-self: flex-start;
-            background-color: #334155;
-            color: #f1f5f9;
-            border-bottom-left-radius: 2px;
-        }
-
+        .user { align-self: flex-end; background-color: #2563eb; color: #ffffff; border-bottom-right-radius: 2px; }
+        .ai { align-self: flex-start; background-color: #334155; color: #f1f5f9; border-bottom-left-radius: 2px; }
         .ai p { margin-bottom: 8px; }
         .ai p:last-child { margin-bottom: 0; }
         .msg img {
@@ -286,7 +241,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             font-size: 12px;
         }
 
-        /* Footer */
         footer {
             padding: 10px 12px;
             background-color: #1e293b;
@@ -310,13 +264,9 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            touch-action: manipulation;
         }
 
-        .icon-btn.active {
-            background-color: #ef4444;
-            animation: pulse 1s infinite;
-        }
+        .icon-btn.active { background-color: #ef4444; animation: pulse 1s infinite; }
 
         input[type="text"] {
             flex: 1;
@@ -329,9 +279,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             font-size: 15px;
         }
 
-        input[type="text"]:focus {
-            border-color: #38bdf8;
-        }
+        input[type="text"]:focus { border-color: #38bdf8; }
 
         button#send {
             background-color: #38bdf8;
@@ -387,7 +335,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
 
         <div id="preview-container">
             <img id="preview-img" src="" alt="preview">
-            <span style="font-size: 12px; color: #94a3b8; flex: 1;">फोटो चुनी गई</span>
+            <span style="font-size: 12px; color: #94a3b8; flex: 1;">फोटो तैयार है</span>
             <button id="cancel-img-btn" onclick="clearSelectedImage()">✕</button>
         </div>
 
@@ -408,15 +356,42 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         let isListening = false;
         let attachedImageBase64 = null;
 
+        // इमेज कंप्रेसर: भारी फ़ोटो को हल्का करता है ताकि Vision API तुरंत पढ़ सके
         function handleImageSelection(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                attachedImageBase64 = e.target.result;
-                document.getElementById("preview-img").src = attachedImageBase64;
-                document.getElementById("preview-container").style.display = "flex";
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement("canvas");
+                    const maxDim = 800; // 800px में इमेज साफ़ भी रहती है और साइज़ बहुत छोटा हो जाता है
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxDim) {
+                            height *= maxDim / width;
+                            width = maxDim;
+                        }
+                    } else {
+                        if (height > maxDim) {
+                            width *= maxDim / height;
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    attachedImageBase64 = canvas.toDataURL("image/jpeg", 0.7);
+                    document.getElementById("preview-img").src = attachedImageBase64;
+                    document.getElementById("preview-container").style.display = "flex";
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -451,7 +426,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             };
 
             recognition.onerror = function(event) {
-                console.error("Mic error:", event.error);
                 stopListening();
             };
 
@@ -466,7 +440,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         micBtn.addEventListener("click", function(e) {
             e.preventDefault();
             if (!recognition) {
-                alert("माइक सपोर्ट नहीं मिला। कृपया Google Speech Services परमिशन चेक करें।");
+                alert("माइक सपोर्ट नहीं मिला।");
                 return;
             }
             if (isListening) {
@@ -555,16 +529,24 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             input.value = "";
             clearSelectedImage();
 
+            // AI सोच रहा है (Loading इंडिकेटर)
+            const loadingId = "load_" + Date.now();
+            addBubble("गौरव देख रहा है...", "ai", false, loadingId);
+
             try {
                 const res = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
-                        message: text || "इस फोटो के बारे में बताओ", 
+                        message: text || "कृपया इस फोटो को देखकर इसके बारे में विस्तार से बताएं।", 
                         image_data: currentImg 
                     })
                 });
                 const data = await res.json();
+                
+                const loadElem = document.getElementById(loadingId);
+                if (loadElem) loadElem.remove();
+
                 if (data.type === "image") {
                     addBubble('<img src="' + data.reply + '" alt="Generated">', "ai", true);
                     speakText("मैंने यह तस्वीर तैयार कर दी है।");
@@ -573,14 +555,17 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                     speakText(data.reply);
                 }
             } catch (err) {
+                const loadElem = document.getElementById(loadingId);
+                if (loadElem) loadElem.remove();
                 addBubble("त्रुटि: सर्वर से कनेक्ट नहीं हो सका।", "ai", false);
             }
         }
 
-        function addBubble(content, role, isHtml = false) {
+        function addBubble(content, role, isHtml = false, elemId = null) {
             const box = document.getElementById("chat-box");
             const div = document.createElement("div");
             div.className = "msg " + role;
+            if (elemId) div.id = elemId;
             isHtml ? div.innerHTML = content : div.innerText = content;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
@@ -618,19 +603,18 @@ def chat_handler(req: ChatPayload):
             return {"reply": "संदेश खाली नहीं हो सकता।", "type": "text"}
 
         search_history.append(raw_text if raw_text else "Photo shared")
-
-        # 1. Developer Identity Rule
+        # 1. डेवलपर की पहचान
         dev_keywords = ["डेवलपर", "developer", "किसने बनाया", "who made you", "who created you", "kisne banaya", "creator", "owner", "admin"]
         if any(k in raw_text.lower() for k in dev_keywords):
             dev_reply = "मेरे डेवलपर का नाम **उमंग राज** है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।"
             chat_memory.append({"role": "user", "content": raw_text})
             chat_memory.append({"role": "ai", "content": dev_reply})
             return {"reply": dev_reply, "type": "text"}
-         # 2. Strict Image Generation Trigger
+
+        # 2. केवल स्पष्ट रिक्वेस्ट पर ही इमेज जेनरेशन
         strict_img_keywords = [
             "फोटो बनाओ", "तस्वीर बनाओ", "इमेज बनाओ", "चित्र बनाओ",
-            "generate image", "create image", "draw an image", "make a photo",
-            "draw a picture", "generate a photo"
+            "generate image", "create image", "draw an image", "make a photo"
         ]
         if any(k in raw_text.lower() for k in strict_img_keywords) and not img_payload:
             clean = raw_text
@@ -642,11 +626,11 @@ def chat_handler(req: ChatPayload):
             chat_memory.append({"role": "ai", "content": img_url})
             return {"reply": img_url, "type": "image"}
 
-        # 3. Conversational Instruction
+        # 3. सिस्टम निर्देश
         system_instruction = (
             "You are Gaurav, a smart, polite, and natural conversational AI assistant built for Umang Raj in Umang AI.\n"
             "If asked who made you or who your developer is, state: 'मेरे डेवलपर का नाम उमंग राज है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।'\n"
-            "If the user shares an image (like medicine, document, or any object), carefully read, inspect, and explain the details of the image clearly.\n"
+            "If the user shares an image (like a medicine, receipt, document, or object), carefully read the text visible in the image and explain it clearly in Hindi/Hinglish.\n"
             "Talk naturally in Hindi/Hinglish or English depending on user input.\n"
             "DO NOT provide code unless explicitly requested.\n"
         )
@@ -655,7 +639,9 @@ def chat_handler(req: ChatPayload):
         for turn in chat_memory[-MAX_MEMORY:]:
             messages.append({"role": "user" if turn["role"] == "user" else "assistant", "content": turn["content"]})
 
+        # इमेज होने पर विज़न मॉडल का इस्तेमाल
         if img_payload:
+            selected_model = "google"  # Gemini Vision जो इमेज और दवाई के नाम को सबसे साफ़ पढ़ता है
             messages.append({
                 "role": "user",
                 "content": [
@@ -664,24 +650,26 @@ def chat_handler(req: ChatPayload):
                 ]
             })
         else:
+            selected_model = "openai"
             messages.append({"role": "user", "content": raw_text})
 
         payload = {
             "messages": messages,
-            "model": "openai",
+            "model": selected_model,
             "seed": 42
         }
 
         try:
-            res = requests.post("https://text.pollinations.ai/", json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+            res = requests.post("https://text.pollinations.ai/", json=payload, headers={"Content-Type": "application/json"}, timeout=35)
             if res.status_code == 200 and res.text.strip():
                 bot_response = res.text.strip()
             else:
-                raise Exception("API error")
+                raise Exception("Vision Model fallback needed")
         except Exception:
+            # बैकअप फॉलबैक
             prompt_encoded = urllib.parse.quote(f"{system_instruction}\nUser: {raw_text}\nGaurav:")
             fallback_res = requests.get(f"https://text.pollinations.ai/{prompt_encoded}?model=search", timeout=15)
-            bot_response = fallback_res.text.strip() if fallback_res.status_code == 200 else "माफ़ कीजिए, सर्वर व्यस्त है। कृपया पुनः प्रयास करें।"
+            bot_response = fallback_res.text.strip() if fallback_res.status_code == 200 else "माफ़ कीजिए, मैं इस फ़ोटो को ठीक से पढ़ नहीं सका। कृपया साफ़ फ़ोटो दोबारा भेजें।"
 
         chat_memory.append({"role": "user", "content": raw_text})
         chat_memory.append({"role": "ai", "content": bot_response})
@@ -701,4 +689,4 @@ def reset_handler():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port) 
