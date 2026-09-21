@@ -626,7 +626,6 @@ def index():
 @app.get("/history")
 def get_history():
     return {"history": list(reversed(search_history))}
-
 @app.post("/chat")
 def chat_handler(req: ChatPayload):
     global chat_memory, search_history
@@ -639,10 +638,75 @@ def chat_handler(req: ChatPayload):
 
         search_history.append(raw_text if raw_text else "Photo shared")
 
-        # इमेज बनाने की रिक्वेस्ट पहचानना
         img_keywords = ["image", "photo", "draw", "generate", "तस्वीर", "फोटो बनाओ", "बनाओ"]
         if any(k in raw_text.lower() for k in img_keywords) and not img_payload:
             clean = raw_text
             for k in img_keywords:
                 clean = clean.lower().replace(k, "").strip()
-            encoded = urllib.pa
+            encoded = urllib.parse.quote(clean or raw_text)
+            img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
+            chat_memory.append({"role": "user", "content": raw_text})
+            chat_memory.append({"role": "ai", "content": img_url})
+            return {"reply": img_url, "type": "image"}
+
+        system_instruction = (
+            "You are Gaurav, an authentic, highly intelligent, and natural conversational AI assistant built exclusively for and by Umang Raj in Umang AI.\n"
+            "CRITICAL IDENTITY RULES:\n"
+            "1. When asked who made you, who is your developer, or who created you ('तुम्हारा डेवलपर कौन है', 'किसने बनाया', etc.), "
+            "you MUST proudly state: 'मेरे डेवलपर का नाम उमंग राज है, जो रामपुर चौरम गाँव, जिला अरवल (बिहार) से बिलोंग करते हैं।'\n"
+            "2. Talk naturally and friendly in Hindi/Hinglish or English depending on user input.\n"
+            "3. If an image is analyzed or described, explain clearly what is in the image.\n"
+            "4. DO NOT provide code unless explicitly requested.\n"
+        )
+
+        messages = [{"role": "system", "content": system_instruction}]
+        for turn in chat_memory[-MAX_MEMORY:]:
+            messages.append({"role": "user" if turn["role"] == "user" else "assistant", "content": turn["content"]})
+
+        if img_payload:
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": raw_text or "Describe this image in detail and help me with it."},
+                    {"type": "image_url", "image_url": {"url": img_payload}}
+                ]
+            })
+        else:
+            messages.append({"role": "user", "content": raw_text})
+
+        payload = {
+            "messages": messages,
+            "model": "openai",
+            "seed": 42
+        }
+
+        try:
+            res = requests.post("https://text.pollinations.ai/", json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+            if res.status_code == 200 and res.text.strip():
+                bot_response = res.text.strip()
+            else:
+                raise Exception("API error")
+        except Exception:
+            prompt_encoded = urllib.parse.quote(f"{system_instruction}\nUser: {raw_text}\nGaurav:")
+            fallback_res = requests.get(f"https://text.pollinations.ai/{prompt_encoded}?model=search", timeout=15)
+            bot_response = fallback_res.text.strip() if fallback_res.status_code == 200 else "माफ़ कीजिए, सर्वर व्यस्त है। कृपया पुनः प्रयास करें।"
+
+        chat_memory.append({"role": "user", "content": raw_text})
+        chat_memory.append({"role": "ai", "content": bot_response})
+        if len(chat_memory) > (MAX_MEMORY * 2):
+            chat_memory = chat_memory[-(MAX_MEMORY * 2):]
+
+        return {"reply": bot_response, "type": "text"}
+    except Exception as e:
+        return {"reply": f"Error: {str(e)}", "type": "text"}
+
+@app.post("/reset")
+def reset_handler():
+    global chat_memory, search_history
+    chat_memory.clear()
+    search_history.clear()
+    return {"status": "cleared"}
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
