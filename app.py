@@ -52,7 +52,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             overflow: hidden;
         }
 
-        /* History Sidebar */
+        /* Sidebar Drawer */
         #sidebar {
             width: 280px;
             background-color: #1e293b;
@@ -166,7 +166,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        /* Welcome Card (Clean intro without village/district) */
+        /* Welcome Section */
         #welcome-section {
             position: absolute;
             top: 45%;
@@ -375,7 +375,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             </div>
         </header>
 
-        <!-- सामान्य व साफ़ वेलकम कार्ड -->
         <div id="welcome-section">
             <div class="logo-circle">⚡</div>
             <div class="welcome-title">Umang AI</div>
@@ -620,18 +619,22 @@ def chat_handler(req: ChatPayload):
 
         search_history.append(raw_text if raw_text else "Photo shared")
 
-        # 1. यदि कोई सीधे डेवलपर के बारे में पूछे तो सटीक उत्तर
+        # 1. Developer Identity Rule
         dev_keywords = ["डेवलपर", "developer", "किसने बनाया", "who made you", "who created you", "kisne banaya", "creator", "owner", "admin"]
         if any(k in raw_text.lower() for k in dev_keywords):
             dev_reply = "मेरे डेवलपर का नाम **उमंग राज** है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।"
             chat_memory.append({"role": "user", "content": raw_text})
             chat_memory.append({"role": "ai", "content": dev_reply})
             return {"reply": dev_reply, "type": "text"}
-# 2. इमेज बनाने की रिक्वेस्ट पहचानना
-        img_keywords = ["image", "photo", "draw", "generate", "तस्वीर", "फोटो बनाओ", "बनाओ"]
-        if any(k in raw_text.lower() for k in img_keywords) and not img_payload:
+         # 2. Strict Image Generation Trigger
+        strict_img_keywords = [
+            "फोटो बनाओ", "तस्वीर बनाओ", "इमेज बनाओ", "चित्र बनाओ",
+            "generate image", "create image", "draw an image", "make a photo",
+            "draw a picture", "generate a photo"
+        ]
+        if any(k in raw_text.lower() for k in strict_img_keywords) and not img_payload:
             clean = raw_text
-            for k in img_keywords:
+            for k in strict_img_keywords:
                 clean = clean.lower().replace(k, "").strip()
             encoded = urllib.parse.quote(clean or raw_text)
             img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
@@ -639,10 +642,11 @@ def chat_handler(req: ChatPayload):
             chat_memory.append({"role": "ai", "content": img_url})
             return {"reply": img_url, "type": "image"}
 
-        # 3. सिस्टम निर्देश
+        # 3. Conversational Instruction
         system_instruction = (
             "You are Gaurav, a smart, polite, and natural conversational AI assistant built for Umang Raj in Umang AI.\n"
             "If asked who made you or who your developer is, state: 'मेरे डेवलपर का नाम उमंग राज है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।'\n"
+            "If the user shares an image (like medicine, document, or any object), carefully read, inspect, and explain the details of the image clearly.\n"
             "Talk naturally in Hindi/Hinglish or English depending on user input.\n"
             "DO NOT provide code unless explicitly requested.\n"
         )
@@ -655,7 +659,7 @@ def chat_handler(req: ChatPayload):
             messages.append({
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": raw_text or "Describe this image in detail and help me with it."},
+                    {"type": "text", "text": raw_text or "कृपया इस फोटो को देखकर इसके बारे में विस्तार से बताएं।"},
                     {"type": "image_url", "image_url": {"url": img_payload}}
                 ]
             })
@@ -698,4 +702,3 @@ def reset_handler():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-        
