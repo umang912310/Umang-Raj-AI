@@ -26,7 +26,7 @@ MAX_MEMORY = 10
 
 class ChatPayload(BaseModel):
     message: str
-    image_data: Optional[str] = None  # Base64 इमेज सपोर्ट
+    image_data: Optional[str] = None
 
 HTML_CONTENT = r"""<!DOCTYPE html>
 <html lang="hi">
@@ -166,7 +166,7 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             cursor: pointer;
         }
 
-        /* Welcome Center */
+        /* Welcome Card (Clean intro without village/district) */
         #welcome-section {
             position: absolute;
             top: 45%;
@@ -257,7 +257,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             display: block;
         }
 
-        /* Image Preview Box before Sending */
         #preview-container {
             display: none;
             padding: 8px 16px;
@@ -376,18 +375,17 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             </div>
         </header>
 
-        <!-- Welcome Card -->
+        <!-- सामान्य व साफ़ वेलकम कार्ड -->
         <div id="welcome-section">
             <div class="logo-circle">⚡</div>
             <div class="welcome-title">Umang AI</div>
             <div class="welcome-desc">
-                नमस्ते! मेरा नाम <strong>गौरव</strong> है। मैं <strong>उमंग राज</strong> (रामपुर चौरम, अरवल) का पर्सनल एआई असिस्टेंट हूँ। मुझसे बात करें, सवाल पूछें या फोटो अपलोड करें!
+                नमस्ते! मेरा नाम <strong>गौरव</strong> है। मैं उमंग राज का पर्सनल एआई असिस्टेंट हूँ। मुझसे कोई भी सवाल पूछें या फोटो अपलोड करें!
             </div>
         </div>
 
         <div id="chat-box"></div>
 
-        <!-- Selected Image Preview -->
         <div id="preview-container">
             <img id="preview-img" src="" alt="preview">
             <span style="font-size: 12px; color: #94a3b8; flex: 1;">फोटो चुनी गई</span>
@@ -395,13 +393,9 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         </div>
 
         <footer>
-            <!-- Hidden File Input -->
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageSelection(event)">
             
-            <!-- + Photo Button -->
             <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="फोटो जोड़ें">➕</button>
-            
-            <!-- Mic Button with Tap and Long Press -->
             <button id="micBtn" class="icon-btn" title="बोलने के लिए दबाएँ">🎙️</button>
             
             <input type="text" id="userInput" placeholder="संदेश लिखें या फोटो जोड़ें..." onkeydown="if(event.key==='Enter') sendMsg()">
@@ -415,7 +409,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         let isListening = false;
         let attachedImageBase64 = null;
 
-        // 1. Image Upload Logic
         function handleImageSelection(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -435,7 +428,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             document.getElementById("preview-container").style.display = "none";
         }
 
-        // 2. High-Compatibility Speech Recognition
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRec) {
             recognition = new SpeechRec();
@@ -472,8 +464,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
         }
 
         const micBtn = document.getElementById("micBtn");
-        
-        // Click to Toggle Mic
         micBtn.addEventListener("click", function(e) {
             e.preventDefault();
             if (!recognition) {
@@ -484,18 +474,14 @@ HTML_CONTENT = r"""<!DOCTYPE html>
                 recognition.stop();
                 stopListening();
             } else {
-                startListeningSafe();
+                try {
+                    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                    recognition.start();
+                } catch(err) {
+                    recognition.stop();
+                }
             }
         });
-
-        function startListeningSafe() {
-            try {
-                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-                recognition.start();
-            } catch(err) {
-                recognition.stop();
-            }
-        }
 
         function stopListening() {
             isListening = false;
@@ -504,7 +490,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             document.getElementById("userInput").placeholder = "संदेश लिखें या फोटो जोड़ें...";
         }
 
-        // 3. Text to Speech
         function speakText(text) {
             if (!isVoiceReplyEnabled || !('speechSynthesis' in window)) return;
             const clean = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
@@ -522,7 +507,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             if (!isVoiceReplyEnabled) window.speechSynthesis.cancel();
         }
 
-        // 4. Sidebar & History
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("open");
             loadHistory();
@@ -551,7 +535,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             } catch (err) {}
         }
 
-        // 5. Send Message & Handle Image
         async function sendMsg() {
             const input = document.getElementById("userInput");
             const text = input.value.trim();
@@ -561,7 +544,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
 
             document.getElementById("welcome-section").style.display = "none";
             
-            // Show User Bubble
             let userHtml = "";
             if (currentImg) {
                 userHtml += `<img src="${currentImg}"><br>`;
@@ -571,7 +553,6 @@ HTML_CONTENT = r"""<!DOCTYPE html>
             }
             addBubble(userHtml, "user", true);
 
-            // Clear Inputs
             input.value = "";
             clearSelectedImage();
 
@@ -626,6 +607,7 @@ def index():
 @app.get("/history")
 def get_history():
     return {"history": list(reversed(search_history))}
+
 @app.post("/chat")
 def chat_handler(req: ChatPayload):
     global chat_memory, search_history
@@ -638,6 +620,14 @@ def chat_handler(req: ChatPayload):
 
         search_history.append(raw_text if raw_text else "Photo shared")
 
+        # 1. यदि कोई सीधे डेवलपर के बारे में पूछे तो सटीक उत्तर
+        dev_keywords = ["डेवलपर", "developer", "किसने बनाया", "who made you", "who created you", "kisne banaya", "creator", "owner", "admin"]
+        if any(k in raw_text.lower() for k in dev_keywords):
+            dev_reply = "मेरे डेवलपर का नाम **उमंग राज** है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।"
+            chat_memory.append({"role": "user", "content": raw_text})
+            chat_memory.append({"role": "ai", "content": dev_reply})
+            return {"reply": dev_reply, "type": "text"}
+# 2. इमेज बनाने की रिक्वेस्ट पहचानना
         img_keywords = ["image", "photo", "draw", "generate", "तस्वीर", "फोटो बनाओ", "बनाओ"]
         if any(k in raw_text.lower() for k in img_keywords) and not img_payload:
             clean = raw_text
@@ -649,14 +639,12 @@ def chat_handler(req: ChatPayload):
             chat_memory.append({"role": "ai", "content": img_url})
             return {"reply": img_url, "type": "image"}
 
+        # 3. सिस्टम निर्देश
         system_instruction = (
-            "You are Gaurav, an authentic, highly intelligent, and natural conversational AI assistant built exclusively for and by Umang Raj in Umang AI.\n"
-            "CRITICAL IDENTITY RULES:\n"
-            "1. When asked who made you, who is your developer, or who created you ('तुम्हारा डेवलपर कौन है', 'किसने बनाया', etc.), "
-            "you MUST proudly state: 'मेरे डेवलपर का नाम उमंग राज है, जो रामपुर चौरम गाँव, जिला अरवल (बिहार) से बिलोंग करते हैं।'\n"
-            "2. Talk naturally and friendly in Hindi/Hinglish or English depending on user input.\n"
-            "3. If an image is analyzed or described, explain clearly what is in the image.\n"
-            "4. DO NOT provide code unless explicitly requested.\n"
+            "You are Gaurav, a smart, polite, and natural conversational AI assistant built for Umang Raj in Umang AI.\n"
+            "If asked who made you or who your developer is, state: 'मेरे डेवलपर का नाम उमंग राज है, जो कि रामपुर चौरम गाँव, जिला अरवल (बिहार) के रहने वाले हैं।'\n"
+            "Talk naturally in Hindi/Hinglish or English depending on user input.\n"
+            "DO NOT provide code unless explicitly requested.\n"
         )
 
         messages = [{"role": "system", "content": system_instruction}]
@@ -710,3 +698,4 @@ def reset_handler():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+        
